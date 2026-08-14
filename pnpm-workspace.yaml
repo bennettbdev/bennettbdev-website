@@ -1,7 +1,8 @@
-minimumReleaseAge: 10080
+#minimumReleaseAge: 10080
 allowBuilds:
   esbuild: true
   sharp: true
+  workerd: true
 
 overrides:
   "sharp": "^0.35.3"
