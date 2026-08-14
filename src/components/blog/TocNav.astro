@@ -1,0 +1,108 @@
+---
+interface Heading {
+	depth: number;
+	slug: string;
+	text: string;
+}
+
+interface Props {
+	headings: Heading[];
+}
+
+const { headings } = Astro.props;
+
+type TocNode = { heading: Heading; children: TocNode[] };
+
+function buildTree(list: Heading[]): TocNode[] {
+	const roots: TocNode[] = [];
+	const stack: TocNode[] = [];
+	for (const heading of list) {
+		const node: TocNode = { heading, children: [] };
+		while ((stack.at(-1)?.heading.depth ?? 0) >= heading.depth) {
+			stack.pop();
+		}
+		const parent = stack.at(-1);
+		if (parent) parent.children.push(node);
+		else roots.push(node);
+		stack.push(node);
+	}
+	return roots;
+}
+
+// The anchor links only exist on h2-h4, so the tree is at most 3 levels deep.
+const tree = buildTree(headings.filter((h) => h.depth >= 2 && h.depth <= 4));
+---
+
+{
+	tree.length > 0 && (
+		<nav class="toc-nav" aria-label="Table of contents">
+			<ul>
+				{tree.map((node) => (
+					<li>
+						<a href={`#${node.heading.slug}`}>{node.heading.text}</a>
+						{node.children.length > 0 && (
+							<ul>
+								{node.children.map((child) => (
+									<li>
+										<a href={`#${child.heading.slug}`}>{child.heading.text}</a>
+										{child.children.length > 0 && (
+											<ul>
+												{child.children.map((grand) => (
+													<li>
+														<a href={`#${grand.heading.slug}`}>{grand.heading.text}</a>
+													</li>
+												))}
+											</ul>
+										)}
+									</li>
+								))}
+							</ul>
+						)}
+					</li>
+				))}
+			</ul>
+		</nav>
+	)
+}
+
+<style>
+	.toc-nav ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.toc-nav li {
+		margin: 0;
+	}
+	.toc-nav ul ul {
+		padding-left: 16px;
+	}
+	.toc-nav a {
+		display: block;
+		padding: 5px 0 5px 14px;
+		font-family: var(--font-navigate);
+		font-size: 13.5px;
+		line-height: 1.45;
+		color: hsl(var(--theme-text) / 0.62);
+		border-left: 1px solid var(--hairline);
+		text-decoration: none;
+		word-break: break-word;
+		overflow-wrap: anywhere;
+		transition:
+			color 0.2s ease,
+			border-color 0.2s ease;
+	}
+	.toc-nav a:hover {
+		color: hsl(var(--theme-text));
+		border-color: var(--faint);
+	}
+	.toc-nav a.active {
+		color: hsl(var(--theme-accent));
+		border-color: hsl(var(--theme-accent));
+	}
+	.toc-nav a:focus-visible {
+		outline: 2px solid hsl(var(--theme-accent));
+		outline-offset: 2px;
+		border-radius: 3px;
+	}
+</style>

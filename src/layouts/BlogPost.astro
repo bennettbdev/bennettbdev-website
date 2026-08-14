@@ -1,0 +1,679 @@
+---
+import { type CollectionEntry, render } from "astro:content";
+import { Image } from "astro:assets";
+
+import Prose from "@/components/Prose.astro";
+import ShareButtons from "@/components/blog/ShareButtons.astro";
+import TocNav from "@/components/blog/TocNav.astro";
+import WebMentions from "@/components/blog/webmentions/index.astro";
+import { getAllPosts, sortMDByDate } from "@/data/post";
+import { siteConfig } from "@/site-config";
+import { formatBylineDate, formatEyebrowDate } from "@/utils/date";
+import { absoluteUrl, withBase } from "@/utils/path";
+
+import BaseLayout from "./Base.astro";
+import { Schema } from "astro-seo-schema";
+
+interface Props {
+	post: CollectionEntry<"post">;
+}
+
+const { post } = Astro.props;
+
+const sortedAll = sortMDByDate(await getAllPosts());
+const idx = sortedAll.findIndex((p) => p.id === post.id);
+const newerPost = idx > 0 ? sortedAll[idx - 1] : undefined;
+const olderPost = idx >= 0 && idx < sortedAll.length - 1 ? sortedAll[idx + 1] : undefined;
+const {
+	data: { coverImage, description, ogImage, publishDate, title, updatedDate, tags, draft },
+	id: slug,
+} = post;
+const socialImage = ogImage ?? `/og-image/${slug}.png`;
+const articleDate = updatedDate?.toISOString() ?? publishDate.toISOString();
+const { remarkPluginFrontmatter, headings } = await render(post);
+
+const authorName = siteConfig.profile?.name ?? siteConfig.author;
+const postUrl = absoluteUrl(`/posts/${slug}/`, Astro.site);
+const socialImageAbsolute = absoluteUrl(socialImage, Astro.site);
+
+// "Posts • Month YYYY"
+const eyebrowDate = formatEyebrowDate(publishDate);
+
+// "2 May 2026"
+const bylineDate = formatBylineDate(publishDate);
+
+// Prefer remark plugin's value; fall back to "".
+const readingTime: string =
+	(remarkPluginFrontmatter as { minutesRead?: string })?.minutesRead ?? "";
+
+// Anchors only exist on h2-h4, so those are the only headings worth linking.
+const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 4);
+const hasToc = tocHeadings.length > 0;
+---
+
+<Schema
+	item={{
+		"@context": "https://schema.org",
+		"@type": "BlogPosting",
+		headline: title,
+		datePublished: articleDate,
+		dateModified: updatedDate?.toISOString(),
+		url: postUrl,
+		image: socialImageAbsolute,
+		author: {
+			"@type": "Person",
+			name: authorName,
+		},
+		description: description,
+	}}
+/>
+
+<BaseLayout meta={{ articleDate, description, ogImage: socialImage, title }}>
+	<div class="post-shell">
+		<div class="post-main" data-pagefind-body>
+			<div class="post-content">
+				<div id="blog-hero" class="post-header">
+					<div class="post-eyebrow">
+						<a href={withBase("/posts/")} class="back-link">← Back</a><span class="sep">•</span>{
+							eyebrowDate
+						}
+					</div>
+					{draft && <span class="draft-flag">(Draft)</span>}
+					<h1 class="post-title">{title}</h1>
+					<p class="byline">
+						{authorName && <>By {authorName}<span class="sep">•</span></>}{bylineDate}{readingTime && (<><span class="sep">•</span>{readingTime}</>
+						)}
+					</p>
+					{!!tags?.length && (
+						<div class="post-tags">
+							{tags.map((tag, i) => (
+								<><a class="tag-link" data-pagefind-filter="tag" href={withBase(`/tags/${encodeURIComponent(tag)}/`)}>{tag}</a>{i < tags.length - 1 && <span class="sep">•</span>}</>
+							))}
+						</div>
+					)}
+					{updatedDate && (
+						<div class="post-updated">
+							Updated <time datetime={updatedDate.toISOString()}>
+								{formatBylineDate(updatedDate)}
+							</time>
+						</div>
+					)}
+				</div>
+
+				{
+					hasToc && (
+						<details class="mobile-toc">
+							<summary>
+								Table of contents<span class="toc-count">({tocHeadings.length})</span>
+							</summary>
+							<nav class="mobile-toc-content" aria-label="Table of contents">
+								<TocNav headings={tocHeadings} />
+							</nav>
+						</details>
+					)
+				}
+
+				{
+					coverImage ? (
+						<figure class="post-cover">
+							<Image
+								src={coverImage.src}
+								alt={coverImage.alt}
+								loading="eager"
+								fetchpriority="high"
+								decoding="async"
+								widths={[480, 720, 960, 1280]}
+								sizes="(max-width: 720px) 92vw, 696px"
+							/>
+						</figure>
+					) : (
+						<hr class="rule" />
+					)
+				}
+
+				<Prose>
+					<slot />
+				</Prose>
+
+				<ShareButtons title={title} url={postUrl} description={description} />
+
+				{siteConfig.webmentions && <WebMentions />}
+			</div>
+			{
+				(olderPost || newerPost) && (
+					<nav class="post-pager" aria-label="More posts">
+						{olderPost && (
+							<a
+								class="pager-link prev"
+								data-astro-prefetch
+								href={withBase(`/posts/${olderPost.id}/`)}
+							>
+								<span class="pager-eyebrow">Older</span>
+								<span class="pager-title">{olderPost.data.title}</span>
+							</a>
+						)}
+						{newerPost && (
+							<a
+								class="pager-link next"
+								data-astro-prefetch
+								href={withBase(`/posts/${newerPost.id}/`)}
+							>
+								<span class="pager-eyebrow">Newer</span>
+								<span class="pager-title">{newerPost.data.title}</span>
+							</a>
+						)}
+					</nav>
+				)
+			}
+		</div>
+
+		{
+			hasToc && (
+				<aside class="toc-sidebar">
+					<p class="toc-label">Contents</p>
+					<TocNav headings={tocHeadings} />
+				</aside>
+			)
+		}
+	</div>
+
+	<button aria-label="Back to Top" class="to-top-btn" data-show="false" id="to-top-btn">
+		<svg
+			aria-hidden="true"
+			fill="none"
+			focusable="false"
+			stroke="currentColor"
+			stroke-width="2"
+			viewBox="0 0 24 24"
+			xmlns="http://www.w3.org/2000/svg"
+		>
+			<path d="M4.5 15.75l7.5-7.5 7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path>
+		</svg>
+	</button>
+</BaseLayout>
+
+<style>
+	.post-shell {
+		display: block;
+		position: relative;
+		/*padding-left: max(32px, env(safe-area-inset-left));
+		padding-right: max(32px, env(safe-area-inset-right));*/
+	}
+
+	.post-content {
+		border: 1px solid var(--hairline);
+		padding-left: max(32px, env(safe-area-inset-left));
+		padding-right: max(32px, env(safe-area-inset-right));
+		padding-bottom: 16px;
+		padding-top: 15px;
+		margin-bottom: 40px;
+	}
+
+	.post-cover {
+		margin: 0 0 36px;
+		padding: 0;
+	}
+	.post-cover img {
+		display: block;
+		width: 100%;
+		height: auto;
+		max-height: 380px;
+		object-fit: cover;
+		border: 1px solid var(--hairline);
+		border-radius: 4px;
+		background: var(--paper);
+	}
+
+	.post-eyebrow {
+		font-family: var(--font-code);
+		font-size: 11.5px;
+		font-weight: 500;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: hsl(var(--theme-text) / 0.55);
+		margin-bottom: 22px;
+		font-variant-numeric: tabular-nums;
+		font-feature-settings: "tnum";
+	}
+	.post-eyebrow .sep {
+		color: var(--faint);
+		margin: 0 8px;
+	}
+	.back-link {
+		color: inherit;
+		text-decoration: none;
+		transition: color 0.2s ease;
+	}
+	.back-link:hover {
+		color: hsl(var(--theme-accent));
+	}
+
+	.draft-flag {
+		display: inline-block;
+		font-family: var(--font-code);
+		font-size: 11.5px;
+		color: #c14a2b;
+		margin-bottom: 12px;
+		letter-spacing: 0.08em;
+	}
+
+	.post-title {
+		font-family: var(--font-main);
+		font-weight: 500;
+		font-size: clamp(28px, 5.5vw, 46px);
+		letter-spacing: -0.022em;
+		line-height: 1.1;
+		color: hsl(var(--theme-text));
+		margin: 0 0 18px;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
+	}
+	.post-title :global(em) {
+		font-style: italic;
+		color: hsl(var(--theme-accent));
+		font-weight: 400;
+	}
+
+	.byline {
+		font-family: var(--font-main);
+		font-style: italic;
+		font-size: 16.5px;
+		color: hsl(var(--theme-text-muted));
+		margin: 0 0 14px;
+		line-height: 1.5;
+		font-variant-numeric: tabular-nums;
+		font-feature-settings: "tnum";
+	}
+	.byline .sep {
+		color: var(--faint);
+		margin: 0 6px;
+		font-style: normal;
+	}
+
+	.post-tags {
+		font-family: var(--font-code);
+		font-size: 11.5px;
+		color: hsl(var(--theme-text) / 0.55);
+		letter-spacing: 0.02em;
+		margin-bottom: 32px;
+		word-break: break-word;
+	}
+	.post-tags .tag-link {
+		color: inherit;
+		text-decoration: none;
+		transition: color 0.2s ease;
+	}
+	.post-tags .tag-link::before {
+		content: "#";
+		color: var(--faint);
+		transition: color 0.2s ease;
+	}
+	.post-tags .tag-link:hover,
+	.post-tags .tag-link:hover::before {
+		color: hsl(var(--theme-accent));
+	}
+	.post-tags .tag-link:focus-visible {
+		outline: 2px solid hsl(var(--theme-accent));
+		outline-offset: 2px;
+		border-radius: 3px;
+	}
+	.post-tags .sep {
+		color: var(--faint);
+		margin: 0 6px;
+	}
+
+	.post-updated {
+		font-family: var(--font-code);
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: hsl(var(--theme-text) / 0.5);
+		margin: -16px 0 32px;
+	}
+
+	.mobile-toc {
+		border: 1px solid var(--hairline);
+		border-radius: var(--button-border-radius);
+		margin: 0 0 36px;
+		transition: border-color 0.35s ease;
+	}
+	.mobile-toc summary {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		cursor: pointer;
+		padding: 6px 16px;
+		font-family: var(--font-code);
+		font-size: 11.5px;
+		font-weight: 500;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: hsl(var(--theme-text) / 0.72);
+		list-style: none;
+		user-select: none;
+	}
+	.mobile-toc summary::-webkit-details-marker {
+		display: none;
+	}
+	.mobile-toc summary::after {
+		content: "▼";
+		margin-left: auto;
+		font-size: 16px;
+		color: var(--faint);
+		transition: transform 0.1s ease;
+	}
+	.mobile-toc[open] summary::after {
+		transform: rotate(180deg);
+	}
+	.mobile-toc .toc-count {
+		color: var(--faint);
+	}
+	.mobile-toc-content {
+		padding: 6px 16px 14px;
+		border-top: 1px solid var(--hairline);
+	}
+	.mobile-toc summary:focus-visible {
+		outline: 2px solid hsl(var(--theme-accent));
+		outline-offset: 2px;
+		border-radius: 3px;
+	}
+
+	.toc-sidebar {
+		display: none;
+	}
+	.toc-label {
+		margin: 0 0 14px;
+		font-family: var(--font-code);
+		font-size: 11px;
+		font-weight: 500;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: hsl(var(--theme-text) / 0.55);
+	}
+
+	.rule {
+		height: 1px;
+		background: var(--hairline);
+		border: 0;
+		margin: 0 0 44px;
+		transition: background-color 0.35s ease;
+	}
+	/* Extra spacing so stacked footer blocks (post-end link, webmentions) read as intentional. */
+	.rule--footer {
+		margin: 56px 0 28px;
+	}
+	/* When sidebar toc isn't shown - the mobile TOC already separates header from article. */
+	@media (max-width: 1439.98px) {
+		.mobile-toc + .rule {
+			display: none;
+		}
+	}
+
+	/* Prev/Next post navigation */
+	.post-pager {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		padding: 0px 10px;
+		column-gap: 32px;
+		row-gap: 28px;
+		margin: 0 0 56px;
+	}
+	.pager-link {
+		display: block;
+		text-decoration: none;
+		min-width: 0;
+	}
+	.pager-link.next {
+		text-align: right;
+	}
+	.pager-eyebrow {
+		display: block;
+		font-family: var(--font-code);
+		font-size: 11px;
+		font-weight: 500;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: hsl(var(--theme-text) / 0.72);
+		margin-bottom: 8px;
+	}
+	.pager-link.prev .pager-eyebrow::before {
+		content: "← ";
+	}
+	.pager-link.next .pager-eyebrow::after {
+		content: " →";
+	}
+	.pager-title {
+		display: block;
+		font-family: var(--font-main);
+		font-size: 17.5px;
+		line-height: 1.3;
+		font-weight: 500;
+		letter-spacing: -0.01em;
+		color: hsl(var(--theme-text));
+		text-wrap: balance;
+		word-wrap: break-word;
+		overflow-wrap: anywhere;
+		transition: color 0.2s ease;
+	}
+	.pager-link:hover .pager-title {
+		color: hsl(var(--theme-accent));
+	}
+	/* Lone prev/next spans full width, text on its natural side. */
+	.post-pager:has(.pager-link.prev:only-child) .pager-link.prev,
+	.post-pager:has(.pager-link.next:only-child) .pager-link.next {
+		grid-column: 1 / -1;
+	}
+	@media (max-width: 720px) {
+		.post-pager {
+			grid-template-columns: 1fr;
+			row-gap: 22px;
+			margin-bottom: 40px;
+		}
+		.pager-link.next {
+			order: 0;
+			text-align: left;
+		}
+		.pager-link.prev {
+			order: 1;
+		}
+	}
+
+	.to-top-btn {
+		position: fixed;
+		bottom: 32px;
+		right: 16px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 999px;
+		border: 1px solid transparent;
+		background: var(--accent-soft);
+		color: hsl(var(--theme-text-muted));
+		cursor: pointer;
+		opacity: 0;
+		transform: translateY(28px);
+		transition:
+			opacity 0.3s ease,
+			transform 0.3s ease,
+			color 0.2s ease,
+			border-color 0.2s ease;
+		z-index: 90;
+	}
+	.to-top-btn[data-show="true"] {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	.to-top-btn:hover {
+		color: hsl(var(--theme-accent));
+		border-color: var(--hairline);
+	}
+	.to-top-btn svg {
+		width: 20px;
+		height: 20px;
+	}
+	@media (min-width: 720px) {
+		.to-top-btn {
+			right: 32px;
+			bottom: 32px;
+			width: 44px;
+			height: 44px;
+		}
+	}
+
+	@media (max-width: 720px) {
+		.post-shell {
+			padding-left: max(22px, env(safe-area-inset-left));
+			padding-right: max(22px, env(safe-area-inset-right));
+		}
+		.post-title {
+			font-size: 30px;
+			line-height: 1.15;
+		}
+		.byline {
+			font-size: 15.5px;
+		}
+		.rule {
+			margin-bottom: 32px;
+		}
+	}
+	@media (max-width: 420px) {
+		.post-shell {
+			padding-left: max(16px, env(safe-area-inset-left));
+			padding-right: max(16px, env(safe-area-inset-right));
+		}
+		.post-eyebrow {
+			font-size: 11px;
+			margin-bottom: 18px;
+		}
+		.post-eyebrow .sep {
+			margin: 0 6px;
+		}
+		.post-title {
+			font-size: 26px;
+		}
+		.byline {
+			font-size: 14.5px;
+			margin-bottom: 24px;
+		}
+		.rule {
+			margin-bottom: 26px;
+		}
+		.post-end {
+			font-size: 14px;
+		}
+	}
+
+	/*
+	 * Wide screens only: keep the content column at --layout-max and add a
+	 * sticky TOC sidebar when the viewport has room for it. Use negative-margin trick on the shell.
+	 * The sidebar is offset to the left of the content column, which stays exactly centered like the header.
+	 */
+	@media (min-width: 1440px) {
+		.post-shell {
+			display: grid;
+			grid-template-columns: 232px 24px var(--layout-max);
+			margin-inline: calc(50% - 50vw);
+			padding-inline: calc(50vw - var(--layout-max) / 2 - 256px) calc(50vw - var(--layout-max) / 2);
+		}
+		.post-main {
+			grid-column: 3;
+			grid-row: 1;
+			min-width: 0;
+		}
+		.toc-sidebar {
+			grid-column: 1;
+			grid-row: 1;
+			display: block;
+			position: sticky;
+			top: 88px;
+			align-self: start;
+			max-height: calc(100vh - 120px);
+			overflow-y: auto;
+			padding: 4px 8px;
+		}
+		.mobile-toc {
+			display: none;
+		}
+	}
+
+	.post-end a:focus-visible,
+	.to-top-btn:focus-visible {
+		outline: 2px solid hsl(var(--theme-accent));
+		outline-offset: 3px;
+		border-radius: 3px;
+	}
+</style>
+
+<script>
+	const scrollBtn = document.getElementById("to-top-btn") as HTMLButtonElement | null;
+	const heroEl = document.getElementById("blog-hero") as HTMLDivElement | null;
+	if (scrollBtn && heroEl) {
+		new IntersectionObserver((entries) => {
+			entries.forEach((entry) => {
+				scrollBtn.dataset.show = (!entry.isIntersecting).toString();
+			});
+		}).observe(heroEl);
+		scrollBtn.addEventListener("click", () =>
+			document.documentElement.scrollTo({ behavior: "smooth", top: 0 }),
+		);
+	}
+
+	const lazyImgs = document.querySelectorAll<HTMLImageElement>('.prose img[loading="lazy"]');
+	if (lazyImgs.length && "IntersectionObserver" in window) {
+		const io = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((e) => {
+					if (e.isIntersecting) {
+						(e.target as HTMLElement).dataset.in = "1";
+						io.unobserve(e.target);
+					}
+				});
+			},
+			{ rootMargin: "120px 0px" },
+		);
+		lazyImgs.forEach((img) => io.observe(img));
+	}
+
+	// TOC scroll spy: highlight the link for the heading closest to the top
+	// of the viewport, in both the desktop sidebar and the mobile details.
+	const tocLinks = Array.from(
+		document.querySelectorAll<HTMLAnchorElement>(
+			'.toc-sidebar a[href^="#"], .mobile-toc-content a[href^="#"]',
+		),
+	);
+	const tocHeadings = Array.from(
+		document.querySelectorAll<HTMLElement>(
+			".prose h2[id], .prose h3[id], .prose h4[id]",
+		),
+	);
+	if (tocLinks.length && tocHeadings.length) {
+		const tocObserver = new IntersectionObserver(
+			(entries) => {
+				const visible = entries.filter((e) => e.isIntersecting).map((e) => e.target as HTMLElement);
+				if (visible.length === 0) return;
+				const topmost = visible.reduce((a, b) =>
+					Math.abs(a.getBoundingClientRect().top) < Math.abs(b.getBoundingClientRect().top) ? a : b,
+				);
+				const id = topmost.getAttribute("id");
+				if (!id) return;
+				tocLinks.forEach((link) => {
+					link.classList.toggle("active", link.getAttribute("href") === `#${id}`);
+				});
+			},
+			// Fire when a heading enters the top ~30% of the viewport,
+			// accounting for the sticky header.
+			{ rootMargin: "-100px 0px -70% 0px", threshold: 0 },
+		);
+		tocHeadings.forEach((h) => tocObserver.observe(h));
+	}
+
+	// Close the mobile TOC after navigating to a section.
+	document.querySelectorAll<HTMLAnchorElement>(".mobile-toc a[href^='#']").forEach((link) => {
+		link.addEventListener("click", () => {
+			const details = link.closest("details");
+			if (details) details.open = false;
+		});
+	});
+</script>

@@ -1,0 +1,193 @@
+---
+import { showcase } from "@/data/showcase";
+import { menuLinks, siteConfig } from "@/site-config";
+import { withBase } from "@/utils/path";
+import ThemeToggle from "../ThemeToggle.astro";
+
+const url = new URL(Astro.request.url);
+
+const visibleMenuLinks = menuLinks.filter((link) => {
+	if (link.path === "/showcase/" && showcase.length === 0) return false;
+	return true;
+});
+
+const isActive = (path: string) => {
+	const target = withBase(path);
+	if (path === "/") return url.pathname === target;
+	return url.pathname === target || url.pathname.startsWith(target);
+};
+---
+
+<header class="site-header" id="main-header">
+	<nav class="nav" aria-label="Primary">
+		{
+			visibleMenuLinks.map((link) =>
+				isActive(link.path) ? (
+					<a
+						aria-current="page"
+						class="breadcrumb-page"
+						href={withBase(link.path)}
+						data-astro-prefetch
+					>
+						{link.title}
+					</a>
+				) : (
+					<a href={withBase(link.path)} data-astro-prefetch>
+						{link.title}
+					</a>
+				),
+			)
+		}
+	</nav>
+	<div class="header-actions">
+		{
+			siteConfig.pagefind !== false && (
+				<button class="search-trigger theme-btn" aria-label="Search (Ctrl+K)" type="button">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<>
+							<circle cx="11" cy="11" r="8" />
+							<path d="m21 21-4.3-4.3" />
+						</>
+					</svg>
+					<kbd>Ctrl K</kbd>
+				</button>
+			)
+		}
+		<ThemeToggle />
+	</div>
+</header>
+
+<script>
+	const modal = () => document.querySelector("pagefind-modal") as any;
+	document.querySelector(".search-trigger")?.addEventListener("click", () => {
+		const m = modal();
+		if (m) m.open ? m.open() : m.toggle?.();
+	});
+
+	document.addEventListener("keydown", (e: KeyboardEvent) => {
+		if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+			const t = document.activeElement;
+			if (
+				t &&
+				(t.tagName === "INPUT" || t.tagName === "TEXTAREA" || (t as HTMLElement).isContentEditable)
+			)
+				return;
+			e.preventDefault();
+			modal()?.open();
+		}
+	});
+</script>
+
+<style>
+	.site-header {
+		position: sticky;
+		top: 0;
+		z-index: 200;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		max-width: var(--layout-max);
+		margin: 0 auto;
+		padding: 2px max(22px, env(safe-area-inset-right)) 2px max(32px, env(safe-area-inset-left));
+		background: hsl(var(--theme-bg));
+		border: 1px solid var(--hairline);
+		border-top: none;
+		transition:
+			background-color 0.35s ease,
+			border-color 0.35s ease;
+	}
+	.nav {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		font-family: var(--font-navigate);
+		font-size: 17px;
+		padding: 6px;
+	}
+	.nav > * + *::before {
+		content: "•";
+		margin: 0 6px;
+		color: hsl(var(--theme-text) / 0.42);
+	}
+	.nav a,
+	.nav .breadcrumb-page {
+		display: inline-flex;
+		align-items: center;
+		padding: 2px 0;
+		color: hsl(var(--theme-text) / 0.72);
+		transition: color 0.2s ease;
+	}
+	.nav a:hover {
+		color: hsl(var(--theme-accent));
+	}
+	.nav .breadcrumb-page {
+		color: hsl(var(--theme-text));
+	}
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.search-trigger {
+		width: unset;
+		height: 35px;
+		gap: 6px;
+		padding: 4px 10px;
+		color: hsl(var(--theme-text));
+		font-size: 13px;
+		cursor: pointer;
+		transition:
+			color 0.2s ease,
+			border-color 0.2s ease,
+			background-color 0.2s ease;
+	}
+	.search-trigger:hover {
+		color: hsl(var(--theme-text));
+		border-color: var(--faint);
+		background: var(--accent-soft);
+	}
+	.search-trigger kbd {
+		font-family: var(--font-code);
+		font-size: 10px;
+		opacity: 0.5;
+		letter-spacing: -0.01em;
+	}
+	@media (max-width: 720px) {
+		.search-trigger kbd {
+			display: none;
+		}
+		.search-trigger {
+			padding: 5px;
+			width: 35px;
+		}
+	}
+
+	@media (max-width: 720px) {
+		.site-header {
+			padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
+		}
+		.nav {
+			font-size: 14px;
+		}
+	}
+	@media (max-width: 420px) {
+		.site-header {
+			padding: 6px max(10px, env(safe-area-inset-right)) 6px max(10px, env(safe-area-inset-left));
+		}
+		.nav {
+			font-size: 12px;
+		}
+	}
+</style>

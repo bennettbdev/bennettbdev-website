@@ -1,0 +1,79 @@
+---
+import { getEntry, render } from "astro:content";
+import Prose from "@/components/Prose.astro";
+import PageLayout from "@/layouts/Base.astro";
+import { siteConfig } from "@/site-config";
+import { absoluteUrl } from "@/utils/path";
+import { Schema } from "astro-seo-schema";
+
+const entry = await getEntry("page", "about");
+if (!entry) throw new Error("Missing src/content/page/about.md");
+const { Content } = await render(entry);
+
+const profile = siteConfig.profile;
+const authorName = profile?.name ?? siteConfig.author;
+
+const meta = {
+	description: entry.data.description ?? `${authorName} — about me.`,
+	title: entry.data.title,
+};
+
+const personSameAs = [
+	profile?.linkedin,
+	profile?.github,
+	profile?.twitter,
+	profile?.mastodon,
+].filter((s): s is string => Boolean(s));
+
+const avatarUrl = profile?.avatar ? absoluteUrl(profile.avatar, Astro.site) : undefined;
+---
+
+<Schema
+	item={{
+		"@context": "https://schema.org",
+		"@type": "ProfilePage",
+		mainEntity: {
+			"@type": "Person",
+			name: authorName,
+			...(avatarUrl ? { image: avatarUrl } : {}),
+			...(profile?.jobTitle ? { jobTitle: profile.jobTitle } : {}),
+			...(profile?.employer
+				? {
+						worksFor: {
+							"@type": "Organization",
+							name: profile.employer,
+							...(profile.employerUrl ? { url: profile.employerUrl } : {}),
+						},
+					}
+				: {}),
+			...(profile?.alumni
+				? {
+						alumniOf: {
+							"@type": "CollegeOrUniversity",
+							name: profile.alumni,
+						},
+					}
+				: {}),
+			...(personSameAs.length ? { sameAs: personSameAs } : {}),
+		},
+	}}
+/>
+
+<PageLayout meta={meta}>
+	<section class="about" aria-labelledby="about-label">
+		<div class="section-label" id="about-label">About</div>
+		<Prose bigFirstLetter={false}>
+			<Content />
+		</Prose>
+	</section>
+</PageLayout>
+
+<style>
+	.about {
+		margin-bottom: 64px;
+	}
+
+	.section-label {
+		margin-bottom: 0px;
+	}
+</style>

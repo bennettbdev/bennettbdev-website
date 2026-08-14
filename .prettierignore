@@ -1,0 +1,12 @@
+*.min.js
+node_modules
+
+# cache-dirs
+**/.cache
+
+pnpm-lock.yaml
+dist
+
+# Prettier adds extra whitespace ruining the seperator spacing, so ignore these
+src/layouts/BlogPost.astro
+src/pages/index.astro
