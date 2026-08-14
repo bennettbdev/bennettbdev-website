@@ -20,5 +20,6 @@ pnpm-debug.log*
 *.pem
 .cache
 .astro
+.wrangler
 .idea
 temp/
