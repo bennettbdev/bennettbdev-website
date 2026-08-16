@@ -1,7 +1,7 @@
 import type { SiteConfig } from "@/types";
 import type { AstroExpressiveCodeOptions } from "astro-expressive-code";
 
-export const siteUrl = "https://example.com";
+export const siteUrl = "https://bennettbeltran.com";
 
 export const siteConfig: SiteConfig = {
 	author: "Bennett",
