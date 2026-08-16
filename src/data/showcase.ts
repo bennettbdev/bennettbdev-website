@@ -10,14 +10,14 @@ export const showcase: ShowcaseItem[] = [
 	{
 		name: "Shoebill",
 		href: "",
-		stack: "Rust • SolidJS • Tauri (Framework) • Go",
+		stack: "Rust • Go • SolidJS • Tauri (Framework)",
 		badge: "WIP",
 		desc: "Clean and fast digital asset manager with extensive organization options. Desktop app is nearing release. Secure & private cloud sync is coming soon.",
 	},
 	{
 		name: "Backpack Bazaar",
 		href: "https://github.com/bennettbdev/BackpackBazaar",
-		stack: "Python • Django (Framwork) • React.js",
+		stack: "Python • Django (Framework) • React.js",
 		desc: "Open-source marketplace webapp. Includes listing management, rudimentary messaging capabilities, and automatic listing classification using machine learning.",
 	},
 	{
