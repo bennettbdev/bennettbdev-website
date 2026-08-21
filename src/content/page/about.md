@@ -20,7 +20,7 @@ This site will mainly consist of tech-related opinion pieces, experiments, proje
 - [Astro](https://astro.build/) is used for static site generation.
 - Theming is a custom combination of [Sienna](https://github.com/anjay-goel/astro-sienna), [Ryze](https://github.com/A58361/Ryze), and more. 
 
-> All written content on this site is made without the use of LLMs or other generative AI.
+> All written content on this site is made without the use of LLMs or other generative AI. [Read about my thoughts on GenAI.](../posts/ai-is-nuanced)
 
 ### Contact
 If you want to talk about a project, learn more about my professional experience, or just say hello, don't hesitate to contact me at [bennettbdev@protonmail.com](mailto:bennettbdev+site@protonmail.com)
