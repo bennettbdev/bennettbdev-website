@@ -14,7 +14,7 @@ export const siteConfig: SiteConfig = {
 		},
 	},
 	description:
-    "A blog where I post my tech-related ramblings and projects. I mainly focus on backend development, but there are many parts of the tech world that I want to learn and explore.",
+    "A blog where I post tech-related opinions, guides, and projects. I mainly focus on backend development, but there are many parts of the tech world that I want to learn and explore.",
 	lang: "en-US",
 	ogLocale: "en_US",
 	sortPostsByUpdatedDate: false,
